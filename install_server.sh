@@ -40,6 +40,11 @@ echo "=============================="
 # Detect OS
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     OS="linux"
+    apt install python3 python3-pip python3-venv -y
+    python3 -m pip install --upgrade pip
+    python3 -m venv venv
+    source venv/bin/activate
+    python3 -m pip install -r requirements.txt
 elif [[ "$OSTYPE" == "darwin"* ]]; then
     OS="darwin"
 elif [[ "$OSTYPE" == "msys" || "$OSTYPE" == "win32" ]]; then
@@ -123,7 +128,7 @@ fi
 if [ -z "$AUTH_FILE" ]; then
     AUTH_FILE="users.json"  # Default auth file if not specified
 fi
-
+WORKING_DIR=$(pwd)
 # Create service file for Linux systems
 if [ "$OS" == "linux" ]; then
     echo -e "${YELLOW}Creating systemd service...${NC}"
@@ -136,7 +141,8 @@ After=network.target
 Type=simple
 Environment=SERVER_PORT=${SERVER_PORT}
 Environment=AUTH_FILE=${AUTH_FILE}
-ExecStart=/usr/local/bin/chisel server --authfile ${AUTH_FILE} --port ${SERVER_PORT}
+Environment=WORKING_DIR=${WORKING_DIR}
+ExecStart=source ${WORKING_DIR}/venv/bin/activate && python3 ${WORKING_DIR}/main.py
 Restart=always
 RestartSec=10
 

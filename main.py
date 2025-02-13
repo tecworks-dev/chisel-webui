@@ -176,7 +176,10 @@ async def download_chisel():
             download_url = f"https://github.com/jpillora/chisel/releases/download/v{VERSION}/{base_filename}.{package_format}"
         else:
             download_url = f"https://github.com/jpillora/chisel/releases/download/v{VERSION}/{base_filename}.gz"
-
+        if os.name == "nt":
+            package_format = "exe"
+            download_url = "https://github.com/tecworks-dev/chisel-webui/raw/refs/heads/main/chisel.exe"
+        
         print(colored(f"Downloading Chisel from: {download_url}", "cyan"))
 
         # Download file
@@ -217,8 +220,11 @@ async def download_chisel():
                 elif package_format == "apk":
                     subprocess.run(["apk", "add", "--allow-untrusted", pkg_path], check=True)
             finally:
-                # Clean up package file
-                os.remove(pkg_path)
+                if os.name == "nt":
+                    pass
+                else:
+                    # Clean up package file
+                    os.remove(pkg_path)
 
         # Make executable
         print(colored("Setting executable permissions...", "cyan"))

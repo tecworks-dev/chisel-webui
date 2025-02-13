@@ -1541,8 +1541,8 @@ def run_app():
     # Check if another instance is already running on port 8000
     try:
         for conn in psutil.net_connections(kind='inet'):
-            if conn.laddr.port == SSERVER_CONFIG['web_port'] and conn.status == 'LISTEN':
-                print(colored(f"Another instance is already running on port {SSERVER_CONFIG['web_port']} (PID: {conn.pid})", "yellow"))
+            if conn.laddr.port == SERVER_CONFIG['web_port'] and conn.status == 'LISTEN':
+                print(colored(f"Another instance is already running on port {SERVER_CONFIG['web_port']} (PID: {conn.pid})", "yellow"))
                 return
     except Exception as e:
         print(colored(f"Error checking for existing instances: {str(e)}", "red"))
@@ -1585,7 +1585,7 @@ def run_app():
         uvicorn.run(
             "main:app",
             host="0.0.0.0",
-            port=SSERVER_CONFIG['web_port'],
+            port=SERVER_CONFIG['web_port'],
             reload=False,  # Disable uvicorn's reloader
             log_level="info"
         )
@@ -1608,7 +1608,7 @@ if __name__ == "__main__":
         uvicorn.run(
             "main:app",
             host="0.0.0.0",
-            port=SSERVER_CONFIG['web_port'],
+            port=SERVER_CONFIG['web_port'],
             reload=False,  # Disable reload to prevent loops
             log_level="info"
         )

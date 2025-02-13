@@ -1,5 +1,5 @@
 #!/bin/bash
-
+set +x
 # Text colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -92,31 +92,62 @@ if [ ! -d "$INSTALL_DIR" ]; then
         sudo mkdir -p "$INSTALL_DIR" || handle_error "Failed to create installation directory"
     fi
 fi
-
 # Download latest chisel release
 echo -e "${YELLOW}Downloading Chisel...${NC}"
 LATEST_VERSION=$(curl -s https://api.github.com/repos/jpillora/chisel/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/') || handle_error "Failed to get latest version"
-DOWNLOAD_URL="https://github.com/jpillora/chisel/releases/download/${LATEST_VERSION}/chisel_${LATEST_VERSION}_${OS}_${ARCH}.gz"
+LATEST_VERSION_NO=${LATEST_VERSION#v}
 
-if [ "$OS" == "windows" ]; then
-    DOWNLOAD_URL="https://github.com/jpillora/chisel/releases/download/${LATEST_VERSION}/chisel_${LATEST_VERSION}_windows_${ARCH}.gz"
-fi
+if [ "$OS" == "linux" ]; then
+    DOWNLOAD_URL="https://github.com/jpillora/chisel/releases/download/${LATEST_VERSION}/chisel_${LATEST_VERSION_NO}_${OS}_${ARCH}.gz"
+    
+    # Download and extract
+    echo -e "${YELLOW}Downloading from: $DOWNLOAD_URL${NC}"
+    if ! curl -L "$DOWNLOAD_URL" -o chisel.gz; then
+        handle_error "Failed to download Chisel"
+    fi
 
-# Download and extract
-echo -e "${YELLOW}Downloading from: $DOWNLOAD_URL${NC}"
-if ! curl -L "$DOWNLOAD_URL" -o chisel.gz; then
-    handle_error "Failed to download Chisel"
-fi
+    if ! gunzip -k chisel.gz; then
+        handle_error "Failed to extract Chisel"
+    fi
 
-if ! gunzip chisel.gz; then
-    handle_error "Failed to extract Chisel"
-fi
+    # Install
+    echo -e "${YELLOW}Installing Chisel...${NC}"
+    chmod +x chisel || handle_error "Failed to make Chisel executable"
+    sudo mv chisel "$INSTALL_DIR/$CHISEL_EXE" || handle_error "Failed to install Chisel"
 
-# Make executable and move to installation directory
-echo -e "${YELLOW}Installing Chisel...${NC}"
-if [ "$OS" == "windows" ]; then
+elif [ "$OS" == "windows" ]; then
+    DOWNLOAD_URL="https://github.com/jpillora/chisel/releases/download/${LATEST_VERSION}/chisel_${LATEST_VERSION_NO}_windows_${ARCH}.gz"
+    
+    # Download and extract
+    echo -e "${YELLOW}Downloading from: $DOWNLOAD_URL${NC}"
+    if ! curl -L "$DOWNLOAD_URL" -o chisel.gz; then
+        handle_error "Failed to download Chisel"
+    fi
+
+    if ! gunzip chisel.gz; then
+        handle_error "Failed to extract Chisel"
+    fi
+
+    # Install
+    echo -e "${YELLOW}Installing Chisel...${NC}"
     mv chisel "$INSTALL_DIR\\$CHISEL_EXE" || handle_error "Failed to install Chisel"
+
 else
+    # For other OS like Darwin, use .gz
+    DOWNLOAD_URL="https://github.com/jpillora/chisel/releases/download/${LATEST_VERSION}/chisel_${LATEST_VERSION_NO}_${OS}_${ARCH}.gz"
+    
+    # Download and extract
+    echo -e "${YELLOW}Downloading from: $DOWNLOAD_URL${NC}"
+    if ! curl -L "$DOWNLOAD_URL" -o chisel.gz; then
+        handle_error "Failed to download Chisel"
+    fi
+
+    if ! gunzip chisel.gz; then
+        handle_error "Failed to extract Chisel"
+    fi
+
+    # Install
+    echo -e "${YELLOW}Installing Chisel...${NC}"
     chmod +x chisel || handle_error "Failed to make Chisel executable"
     sudo mv chisel "$INSTALL_DIR/$CHISEL_EXE" || handle_error "Failed to install Chisel"
 fi
@@ -143,7 +174,8 @@ Type=simple
 Environment=SERVER_PORT=${SERVER_PORT}
 Environment=AUTH_FILE=${AUTH_FILE}
 Environment=WORKING_DIR=${WORKING_DIR}
-ExecStart=source ${WORKING_DIR}/venv/bin/activate && python3 ${WORKING_DIR}/main.py
+ExecStart=bash -c 'source ${WORKING_DIR}/venv/bin/activate && python3 ${WORKING_DIR}/main.py'
+
 Restart=always
 RestartSec=10
 

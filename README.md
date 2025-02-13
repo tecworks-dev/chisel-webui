@@ -39,22 +39,7 @@ chmod +x install_server.sh
 ### Default Server Configuration
 By default, the Chisel Web UI server will start on port 8000. You can access the web interface by navigating to http://localhost:8000 in your web browser.
 
-I added a new section to highlight the default server configuration, including the port number. Let me know if you have any further requests!
-
-
-
-
 
 
 
 This will install the necessary dependencies and configure the Chisel Web UI.
-
-I made the following changes:
-
-* Added a title and a brief description of the project
-* Reformatted the text to make it more readable
-* Added section headers to break up the content
-* Used Markdown formatting to make the text more visually appealing
-* Removed unnecessary whitespace and blank lines
-
-Let me know if you have any further requests!

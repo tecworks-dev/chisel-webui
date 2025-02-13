@@ -65,6 +65,7 @@
                 <a class="tab" id="usersTabBtn" onclick="showTab('users')" style="display: none;">Users</a>
                 <a class="tab tab-active" onclick="showTab('ports')">Ports</a>
                 <a class="tab" id="activityTabBtn" onclick="showTab('activity')" style="display: none;">Activity</a>
+                <a class="tab" id="serverConfigTabBtn" onclick="showTab('serverConfig')" style="display: none;">Server Config</a>
             </div>
 
             <!-- Users Tab -->
@@ -226,6 +227,77 @@
                                 <tbody id="activityLog"></tbody>
                             </table>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Server Configuration Tab -->
+            <div id="serverConfigTab" class="hidden">
+                <div class="card bg-base-200 shadow-xl">
+                    <div class="card-body">
+                        <h2 class="card-title">Server Configuration</h2>
+                        <form id="serverConfigForm" class="space-y-4">
+                            <div class="form-control">
+                                <label class="label">
+                                    <span class="label-text">Server URL</span>
+                                    <span class="label-text-alt">
+                                        <div class="tooltip tooltip-left" data-tip="The public URL or IP address where your server can be reached">
+                                            <button type="button" class="btn btn-circle btn-xs">?</button>
+                                        </div>
+                                    </span>
+                                </label>
+                                <input type="text" id="serverUrl" class="input input-bordered" required>
+                                <label class="label">
+                                    <span class="label-text-alt text-info">Example: example.com, 192.168.1.100, mydomain.net</span>
+                                </label>
+                            </div>
+                            <div class="form-control">
+                                <label class="label">
+                                    <span class="label-text">Web Interface Port</span>
+                                    <span class="label-text-alt">
+                                        <div class="tooltip tooltip-left" data-tip="The port where the web interface will be accessible">
+                                            <button type="button" class="btn btn-circle btn-xs">?</button>
+                                        </div>
+                                    </span>
+                                </label>
+                                <input type="number" id="webPort" class="input input-bordered" required min="1" max="65535">
+                                <label class="label">
+                                    <span class="label-text-alt text-info">Default: 8000</span>
+                                </label>
+                            </div>
+                            <div class="form-control">
+                                <label class="label">
+                                    <span class="label-text">Chisel Server Port</span>
+                                    <span class="label-text-alt">
+                                        <div class="tooltip tooltip-left" data-tip="The port where Chisel server will listen for tunnel connections">
+                                            <button type="button" class="btn btn-circle btn-xs">?</button>
+                                        </div>
+                                    </span>
+                                </label>
+                                <input type="number" id="chiselPort" class="input input-bordered" required min="1" max="65535">
+                                <label class="label">
+                                    <span class="label-text-alt text-info">Default: 8081</span>
+                                </label>
+                            </div>
+                            <div class="alert alert-warning">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                                </svg>
+                                <div>
+                                    <h3 class="font-bold">Warning</h3>
+                                    <div class="text-sm">
+                                        Changing these settings will:
+                                        <ul class="list-disc list-inside mt-1">
+                                            <li>Restart both web and Chisel servers</li>
+                                            <li>Disconnect all active tunnels</li>
+                                            <li>Require clients to reconnect with new settings</li>
+                                            <li>You may need to refresh this page if web port changes</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary w-full">Update Server Configuration</button>
+                        </form>
                     </div>
                 </div>
             </div>
@@ -457,35 +529,40 @@
         function updateUIPermissions() {
             const isAdmin = currentUser && currentUser.role === 'admin';
             
-            // Hide user management elements for non-admins
-            const userElements = [
+            // Add server config elements to the list
+            const adminElements = [
                 document.querySelector('[onclick="showAddUserModal()"]'),
-                document.getElementById('usersTabBtn'),  // Tab button
-                document.getElementById('activityTabBtn'),  // Tab button
+                document.getElementById('usersTabBtn'),
+                document.getElementById('activityTabBtn'),
+                document.getElementById('serverConfigTabBtn'),
                 document.getElementById('addUserModal'),
                 document.querySelector('.tabs [onclick="showTab(\'users\')"]'),
                 document.querySelector('.tabs [onclick="showTab(\'activity\')"]'),
-                document.getElementById('usersTabContent'),  // Tab content div
-                document.getElementById('activityTab')  // Tab content div
+                document.querySelector('.tabs [onclick="showTab(\'serverConfig\')"]'),
+                document.getElementById('usersTabContent'),
+                document.getElementById('activityTab'),
+                document.getElementById('serverConfigTab')
             ];
             
-            // First hide all user-related elements
-            userElements.forEach(el => {
+            // First hide all admin-related elements
+            adminElements.forEach(el => {
                 if (el) {
                     el.style.display = 'none';
-                    // Also add a class to ensure it stays hidden
                     el.classList.add('hidden');
                 }
             });
 
             // Show elements only for admin users
             if (isAdmin) {
-                userElements.forEach(el => {
+                adminElements.forEach(el => {
                     if (el) {
                         el.style.display = '';
                         el.classList.remove('hidden');
                     }
                 });
+                
+                // Load server configuration
+                loadServerConfig();
             }
             const usedPortsSection = document.getElementById('usedPortsSection');
 
@@ -536,10 +613,13 @@
                 const adminContent = [
                     document.getElementById('usersTabBtn'),
                     document.getElementById('activityTabBtn'),
+                    document.getElementById('serverConfigTabBtn'),
                     document.querySelector('.tabs [onclick="showTab(\'users\')"]'),
                     document.querySelector('.tabs [onclick="showTab(\'activity\')"]'),
+                    document.querySelector('.tabs [onclick="showTab(\'serverConfig\')"]'),
                     document.getElementById('usersTabContent'),
-                    document.getElementById('activityTab')
+                    document.getElementById('activityTab'),
+                    document.getElementById('serverConfigTab')
                 ];
                 
                 adminContent.forEach(el => {
@@ -628,6 +708,7 @@
             document.getElementById('usersTabContent').classList.add('hidden');
             document.getElementById('portsTab').classList.add('hidden');
             document.getElementById('activityTab').classList.add('hidden');
+            document.getElementById('serverConfigTab').classList.add('hidden');
             
             // Show selected tab content
             switch(tabName) {
@@ -641,6 +722,13 @@
                 case 'activity':
                     if (currentUser && currentUser.role === 'admin') {
                         document.getElementById('activityTab').classList.remove('hidden');
+                    } else {
+                        document.getElementById('portsTab').classList.remove('hidden');
+                    }
+                    break;
+                case 'serverConfig':
+                    if (currentUser && currentUser.role === 'admin') {
+                        document.getElementById('serverConfigTab').classList.remove('hidden');
                     } else {
                         document.getElementById('portsTab').classList.remove('hidden');
                     }
@@ -1553,6 +1641,122 @@
                 color: 'hsl(var(--bc))'
             });
         }
+
+        // Add these new functions for server configuration
+        async function loadServerConfig() {
+            try {
+                const response = await fetch('/api/server-config');
+                if (!response.ok) throw new Error('Failed to load server configuration');
+                
+                const config = await response.json();
+                document.getElementById('serverUrl').value = config.server_url;
+                document.getElementById('webPort').value = config.web_port;
+                document.getElementById('chiselPort').value = config.chisel_port;
+            } catch (error) {
+                showError('Error loading server configuration');
+                console.error('Error loading server config:', error);
+            }
+        }
+
+        // Add event listener for server config form
+        document.getElementById('serverConfigForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = {
+                server_url: document.getElementById('serverUrl').value,
+                web_port: parseInt(document.getElementById('webPort').value),
+                chisel_port: parseInt(document.getElementById('chiselPort').value)
+            };
+
+            // Validate that ports are different
+            if (formData.web_port === formData.chisel_port) {
+                showError('Web interface port and Chisel server port must be different');
+                return;
+            }
+
+            try {
+                const result = await Swal.fire({
+                    title: 'Confirm Configuration Update',
+                    html: `
+                        <div class="space-y-4">
+                            <p>Are you sure you want to update the server configuration?</p>
+                            <div class="alert alert-warning">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                                </svg>
+                                <div>
+                                    <p>This will restart both web and Chisel servers.</p>
+                                    ${formData.web_port !== 8000 ? '<p class="text-warning font-bold">Warning: You will need to access the web interface at the new port after the update.</p>' : ''}
+                                </div>
+                            </div>
+                        </div>
+                    `,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Yes, update it',
+                    cancelButtonText: 'Cancel',
+                    confirmButtonColor: 'hsl(var(--p))',
+                    cancelButtonColor: 'hsl(var(--n))'
+                });
+
+                if (result.isConfirmed) {
+                    const response = await fetch('/api/server-config', {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(formData)
+                    });
+
+                    if (!response.ok) {
+                        const error = await response.json();
+                        throw new Error(error.detail || 'Failed to update server configuration');
+                    }
+
+                    showToast('Server configuration updated successfully');
+                    addActivity('Update Server Config', `Updated server configuration - URL: ${formData.server_url}, Web Port: ${formData.web_port}, Chisel Port: ${formData.chisel_port}`);
+                    
+                    // Show reconnection instructions
+                    await Swal.fire({
+                        title: 'Configuration Updated',
+                        html: `
+                            <div class="space-y-4">
+                                <p>Server configuration has been updated successfully.</p>
+                                <div class="alert alert-info">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                    <div>
+                                        <h3 class="font-bold">Next Steps:</h3>
+                                        <ul class="list-disc list-inside mt-1">
+                                            <li>All clients need to reconnect using the new Chisel port</li>
+                                            <li>Update any saved client configurations</li>
+                                            <li>Check exposed ports page for updated client commands</li>
+                                            ${formData.web_port !== 8000 ? `<li class="text-warning font-bold">Access the web interface at: ${formData.server_url}:${formData.web_port}</li>` : ''}
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        `,
+                        icon: 'success',
+                        confirmButtonColor: 'hsl(var(--p))'
+                    });
+
+                    // If web port changed, redirect to new port after a delay
+                    if (formData.web_port !== 8000) {
+                        setTimeout(() => {
+                            window.location.href = `http://${formData.server_url}:${formData.web_port}`;
+                        }, 5000);
+                    }
+
+                    // Refresh ports to get updated client commands
+                    await updatePorts();
+                }
+            } catch (error) {
+                showError(error.message);
+                console.error('Error updating server config:', error);
+            }
+        });
     </script>
 </body>
 </html> 

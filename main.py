@@ -26,14 +26,51 @@ import shutil
 import stat
 
 # Constants
+CONFIG_FILE = "config.json"
 CHISEL_USERS_FILE = "users.json"  # For chisel authentication
 WEB_USERS_FILE = "web_users.json"  # For web interface users
 DEFAULT_PORT_RANGE = (3000, 9000)
 DOCKER_COMPOSE_FILE = "docker-compose.yml"
 TEMPLATES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "templates")
 STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
+WEB_PORT = 8000  # Web interface port
 CHISEL_PORT = 8081  # Dedicated port for Chisel server
-SERVER_IP = "127.0.0.1"
+
+# Load server configuration
+def load_server_config():
+    try:
+        if os.path.exists(CONFIG_FILE):
+            with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+                config = json.load(f)
+                print(colored("Successfully loaded server configuration", "green"))
+                return config
+        print(colored("Config file not found, using default configuration", "yellow"))
+        return {
+            "server_url": "127.0.0.1",
+            "web_port": WEB_PORT,
+            "chisel_port": CHISEL_PORT
+        }
+    except Exception as e:
+        print(colored(f"Error loading server configuration: {str(e)}", "red"))
+        return {
+            "server_url": "127.0.0.1",
+            "web_port": WEB_PORT,
+            "chisel_port": CHISEL_PORT
+        }
+
+def save_server_config(config: dict):
+    try:
+        with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+            json.dump(config, f, indent=4)
+            print(colored("Successfully saved server configuration", "green"))
+    except Exception as e:
+        print(colored(f"Error saving server configuration: {str(e)}", "red"))
+        raise HTTPException(status_code=500, detail="Could not save server configuration")
+
+# Load initial configuration
+SERVER_CONFIG = load_server_config()
+SERVER_IP = SERVER_CONFIG["server_url"]
+
 # Security Constants
 SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-here")  # Change in production
 ALGORITHM = "HS256"
@@ -511,6 +548,11 @@ class PortExposure(BaseModel):
     username: str
     description: str
 
+class ServerConfig(BaseModel):
+    server_url: str
+    web_port: int = WEB_PORT
+    chisel_port: int = CHISEL_PORT
+
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
 
@@ -887,7 +929,7 @@ def is_valid_port(port: int) -> bool:
     return isinstance(port, int) and 1 <= port <= 65535
 
 def generate_chisel_client_command(username: str, password: str, remote_port: int, local_port: int) -> str:
-    return f"chisel client --auth {username}:{password} http://{SERVER_IP}:{CHISEL_PORT} R:{remote_port}:localhost:{local_port}"
+    return f"chisel client --auth {username}:{password} http://{SERVER_CONFIG['server_url']}:{SERVER_CONFIG['chisel_port']} R:{remote_port}:localhost:{local_port}"
 
 def get_user_password_from_chisel_users(username: str) -> str:
     """Get the user's password from chisel users file"""
@@ -1349,7 +1391,7 @@ async def get_install_client(config: str, token: str = None):
         combined_script = f"""#!/bin/bash
 
 # Set configuration variables
-export SERVER_URL="{SERVER_IP}:{CHISEL_PORT}"
+export SERVER_URL="{SERVER_CONFIG['server_url']}:{SERVER_CONFIG['chisel_port']}"
 export USERNAME="{config_username}"
 export PASSWORD="{password}"
 export LOCAL_PORT="{local_port}"
@@ -1427,6 +1469,66 @@ rm install_client.sh chisel-client.template.conf
         raise
     except Exception as e:
         print(colored(f"Error generating installation script: {str(e)}", "red"))
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/server-config")
+async def get_server_config(current_user: UserInDB = Depends(get_current_active_user)):
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only admins can view server configuration"
+        )
+    return SERVER_CONFIG
+
+@app.put("/api/server-config")
+async def update_server_config(
+    config: ServerConfig,
+    current_user: UserInDB = Depends(get_current_active_user)
+):
+    try:
+        if current_user.role != UserRole.ADMIN:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only admins can update server configuration"
+            )
+
+        # Validate server URL format
+        if not re.match(r'^[a-zA-Z0-9.-]+$', config.server_url):
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid server URL format"
+            )
+
+        # Validate port number
+        if not (1 <= config.chisel_port <= 65535):
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid port number"
+            )
+
+        # Update configuration
+        global SERVER_CONFIG, SERVER_IP
+        SERVER_CONFIG = {
+            "server_url": config.server_url,
+            "web_port": config.web_port,
+            "chisel_port": config.chisel_port
+        }
+        SERVER_IP = config.server_url
+        
+        # Save configuration
+        save_server_config(SERVER_CONFIG)
+        
+        # Restart Chisel server to apply changes
+        await restart_chisel_server()
+        
+        return {
+            "message": "Server configuration updated successfully",
+            "config": SERVER_CONFIG
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(colored(f"Error updating server configuration: {str(e)}", "red"))
         raise HTTPException(status_code=500, detail=str(e))
 
 # Define run_app at module level for Windows multiprocessing

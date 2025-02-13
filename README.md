@@ -1,7 +1,4 @@
 
-
-Here's a rewritten version of the `serverr/README.md` file with some improvements:
-
 Chisel Web UI
 ================
 

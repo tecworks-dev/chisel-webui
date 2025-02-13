@@ -40,7 +40,7 @@ echo "=============================="
 # Detect OS
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     OS="linux"
-    apt install curl gunzip python3 python3-pip python3-venv -y
+    apt install curl gzip python3 python3-pip python3-venv -y
     apt install sudo -y
     python3 -m pip install --upgrade pip
     python3 -m venv venv

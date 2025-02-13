@@ -425,7 +425,7 @@ async def lifespan(app: FastAPI):
             try:
                 # Get the current directory and chisel executable path
                 current_dir = os.path.dirname(os.path.abspath(__file__))
-                chisel_exe = os.path.join(current_dir, "chisel.exe" if os.name == "nt" else "chisel")
+                chisel_exe = os.path.join(current_dir, "chisel.exe" if os.name == "nt" else "/usr/local/bin/chisel")
                 
                 if not os.path.exists(chisel_exe):
                     print(colored(f"Error: Chisel executable not found at {chisel_exe}", "red"))

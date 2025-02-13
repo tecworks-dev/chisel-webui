@@ -33,8 +33,8 @@ DEFAULT_PORT_RANGE = (3000, 9000)
 DOCKER_COMPOSE_FILE = "docker-compose.yml"
 TEMPLATES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "templates")
 STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
-WEB_PORT = 8000  # Web interface port
-CHISEL_PORT = 8081  # Dedicated port for Chisel server
+WEB_PORT = 2002  # Web interface port
+CHISEL_PORT = 2003  # Dedicated port for Chisel server
 
 # Load server configuration
 def load_server_config():

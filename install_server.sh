@@ -189,7 +189,7 @@ EOL
     # Enable and start the service
     sudo systemctl daemon-reload || handle_error "Failed to reload systemd"
     sudo systemctl enable chisel-server || handle_error "Failed to enable service"
-    sudo systemctl start chisel-server || handle_error "Failed to start service"
+    sudo systemctl restart chisel-server || handle_error "Failed to start service"
 
     echo -e "${GREEN}Service installed and started!${NC}"
 

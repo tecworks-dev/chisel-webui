@@ -1,0 +1,1558 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chisel Control Panel</title>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@3.9.4/dist/full.css" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body class="min-h-screen bg-base-300">
+    <!-- Login Modal -->
+    <dialog id="loginModal" class="modal modal-bottom sm:modal-middle">
+        <form method="dialog" class="modal-box" onsubmit="return false;">
+            <h3 class="font-bold text-lg mb-4">Login to Chisel Control Panel</h3>
+            <div class="form-control">
+                <label class="label">
+                    <span class="label-text">Username</span>
+                </label>
+                <input type="text" id="loginUsername" class="input input-bordered" required>
+            </div>
+            <div class="form-control mt-4">
+                <label class="label">
+                    <span class="label-text">Password</span>
+                </label>
+                <input type="password" id="loginPassword" class="input input-bordered" required>
+            </div>
+            <div class="modal-action">
+                <button class="btn btn-primary" onclick="login()">Login</button>
+            </div>
+        </form>
+    </dialog>
+
+    <!-- Main App (hidden until authenticated) -->
+    <div id="app" class="hidden">
+        <!-- Navbar -->
+        <div class="navbar bg-base-200 sticky top-0 z-50 shadow-lg">
+            <div class="flex-1">
+                <a class="btn btn-ghost text-xl">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                    Chisel Control Panel
+                </a>
+            </div>
+            <div class="flex-none gap-2">
+                <div class="dropdown dropdown-end">
+                    <label tabindex="0" class="btn btn-ghost btn-circle avatar placeholder">
+                        <div class="bg-neutral text-neutral-content rounded-full w-10">
+                            <span id="userInitials">...</span>
+                        </div>
+                    </label>
+                    <ul tabindex="0" class="mt-3 z-[1] p-2 shadow menu menu-sm dropdown-content bg-base-200 rounded-box w-52">
+                        <li><a onclick="showUserProfile()">Profile</a></li>
+                        <li><a onclick="logout()">Logout</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="container mx-auto p-4">
+            <div class="tabs tabs-boxed mb-4">
+                <a class="tab" id="usersTabBtn" onclick="showTab('users')" style="display: none;">Users</a>
+                <a class="tab tab-active" onclick="showTab('ports')">Ports</a>
+                <a class="tab" id="activityTabBtn" onclick="showTab('activity')" style="display: none;">Activity</a>
+            </div>
+
+            <!-- Users Tab -->
+            <div id="usersTabContent" class="space-y-4 hidden">
+                <!-- User Management Section -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <!-- User List -->
+                    <div class="card bg-base-200 shadow-xl">
+                        <div class="card-body">
+                            <div class="flex justify-between items-center">
+                                <h2 class="card-title">Users</h2>
+                                <button class="btn btn-primary btn-sm" onclick="showAddUserModal()" style="display: none;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                    </svg>
+                                    Add User
+                                </button>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="table table-zebra">
+                                    <thead>
+                                        <tr>
+                                            <th>Username</th>
+                                            <th>Role</th>
+                                            <th>Status</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="usersList"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- User Details -->
+                    <div class="card bg-base-200 shadow-xl">
+                        <div class="card-body">
+                            <h2 class="card-title">User Details</h2>
+                            <div id="userDetails" class="space-y-4">
+                                <p class="text-center text-base-content/60">Select a user to view details</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ports Tab -->
+            <div id="portsTab" class="hidden space-y-4">
+                <!-- Port Management Grid -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <!-- Port Exposure Form -->
+                    <div class="card bg-base-200 shadow-xl">
+                        <div class="card-body">
+                            <h2 class="card-title">Expose Port</h2>
+                            <form id="portExposureForm" class="space-y-4" style="display: none;">
+                                <div class="form-control">
+                                    <label class="label">
+                                        <span class="label-text">Local Port</span>
+                                    </label>
+                                    <input type="number" id="localPort" class="input input-bordered" required min="1" max="65535">
+                                </div>
+                                <div class="form-control">
+                                    <label class="label">
+                                        <span class="label-text">Remote Port</span>
+                                    </label>
+                                    <input type="number" id="remotePort" class="input input-bordered" required min="1" max="65535">
+                                </div>
+                                <div class="form-control">
+                                    <label class="label">
+                                        <span class="label-text">User</span>
+                                    </label>
+                                    <select id="exposureUsername" class="select select-bordered" required>
+                                        <option value="">Select a user</option>
+                                    </select>
+                                </div>
+                                <div class="form-control">
+                                    <label class="label">
+                                        <span class="label-text">Description</span>
+                                    </label>
+                                    <input type="text" id="description" class="input input-bordered" required placeholder="Web Server, Database, etc.">
+                                </div>
+                                <button type="submit" class="btn btn-primary w-full">Expose Port</button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Port Status -->
+                    <div class="card bg-base-200 shadow-xl">
+                        <div class="card-body">
+                            <h2 class="card-title">Port Status</h2>
+                            <div class="space-y-4">
+                                <div id="usedPortsSection">
+                                    <h3 class="text-lg font-semibold">Used Ports</h3>
+                                    <div id="usedPorts" class="flex flex-wrap gap-2"></div>
+                                </div>
+                                <div>
+                                    <h3 class="text-lg font-semibold">Available Ports</h3>
+                                    <div id="availablePorts" class="flex flex-wrap gap-2"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Exposed Ports -->
+                <div class="card bg-base-200 shadow-xl">
+                    <div class="card-body">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="card-title">Exposed Ports</h2>
+                            <div class="form-control">
+                                <div class="input-group">
+                                    <input type="text" 
+                                           id="portSearchInput" 
+                                           placeholder="Search ports..." 
+                                           class="input input-bordered w-full max-w-xs"
+                                           onkeyup="filterExposedPorts()">
+                                    <button class="btn btn-square">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Local Port</th>
+                                        <th>Remote Port</th>
+                                        <th>Username</th>
+                                        <th>Description</th>
+                                        <th>Client Command</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="exposedPortsList"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Activity Tab -->
+            <div id="activityTab" class="hidden">
+                <div class="card bg-base-200 shadow-xl">
+                    <div class="card-body">
+                        <h2 class="card-title">Activity Log</h2>
+                        <div class="overflow-x-auto">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Time</th>
+                                        <th>User</th>
+                                        <th>Action</th>
+                                        <th>Details</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="activityLog"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add User Modal -->
+    <dialog id="addUserModal" class="modal">
+        <form method="dialog" class="modal-box">
+            <h3 class="font-bold text-lg">Add New User</h3>
+            <div class="py-4 space-y-4">
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Username</span>
+                    </label>
+                    <input type="text" id="newUsername" class="input input-bordered" required>
+                </div>
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Password</span>
+                    </label>
+                    <input type="password" id="newPassword" class="input input-bordered" required>
+                </div>
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Allowed Ports</span>
+                        <span class="label-text-alt">
+                            <div class="tooltip tooltip-left" data-tip="Click for help with port patterns">
+                                <button onclick="showPortPatternsHelp()" class="btn btn-circle btn-xs">?</button>
+                            </div>
+                        </span>
+                    </label>
+                    <input type="text" id="newPorts" class="input input-bordered" placeholder="3000,8080,^R:0.0.0.0:7000$">
+                    <label class="label">
+                        <span class="label-text-alt text-info">Comma-separated list of port patterns. Examples: 3000, ^0.0.0.0:8080$, ^R:0.0.0.0:7000$</span>
+                    </label>
+                </div>
+            </div>
+            <div class="modal-action">
+                <button class="btn" onclick="closeAddUserModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="addUser()">Add User</button>
+            </div>
+        </form>
+    </dialog>
+
+    <!-- Profile Modal -->
+    <dialog id="profileModal" class="modal">
+        <form method="dialog" class="modal-box">
+            <h3 class="font-bold text-lg">User Profile</h3>
+            <div class="py-4 space-y-4">
+                <div class="flex flex-col items-center gap-4 mb-6">
+                    <div class="avatar placeholder">
+                        <div class="bg-neutral text-neutral-content rounded-full w-24">
+                            <span id="profileInitials" class="text-3xl">...</span>
+                        </div>
+                    </div>
+                    <div class="text-center">
+                        <h3 id="profileFullName" class="text-xl font-bold">...</h3>
+                        <p id="profileEmail" class="text-base-content/60">...</p>
+                        <p id="profileRole" class="badge mt-2">...</p>
+                    </div>
+                </div>
+                
+                <!-- Password Change Section -->
+                <div class="divider">Change Password</div>
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Current Password</span>
+                    </label>
+                    <input type="password" id="ChangecurrentPassword" class="input input-bordered" required>
+                </div>
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">New Password</span>
+                    </label>
+                    <input type="password" id="ChangenewPassword" class="input input-bordered" required>
+                </div>
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Confirm New Password</span>
+                    </label>
+                    <input type="password" id="ChangeconfirmPassword" class="input input-bordered" required>
+                </div>
+                <div class="alert alert-info text-info-content border border-info">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>Existing tunnel connections will continue to work with the old password.</span>
+                </div>
+            </div>
+            <div class="modal-action">
+                <button class="btn" onclick="closeProfileModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="changePassword()">Change Password</button>
+            </div>
+        </form>
+    </dialog>
+
+    <script>
+        // Authentication state and global variables
+        let currentUser = null;
+        let authToken = localStorage.getItem('authToken');
+        let activityLog = [];
+
+        // Check authentication on load
+        async function checkAuth() {
+            const token = localStorage.getItem('authToken');
+            if (!token) {
+                showLoginModal();
+                return false;
+            }
+
+            try {
+                const response = await fetch('/api/users/me', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Authentication failed');
+                }
+
+                currentUser = await response.json();
+                document.getElementById('userInitials').textContent = currentUser.username[0].toUpperCase();
+                document.getElementById('app').classList.remove('hidden');
+                return true;
+            } catch (error) {
+                console.error('Auth check failed:', error);
+                showLoginModal();
+                return false;
+            }
+        }
+
+        // Show login modal
+        function showLoginModal() {
+            document.getElementById('app').classList.add('hidden');
+            document.getElementById('loginModal').showModal();
+        }
+
+        // Login handler
+        async function login() {
+            const username = document.getElementById('loginUsername').value;
+            const password = document.getElementById('loginPassword').value;
+
+            try {
+                const response = await fetch('/token', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`
+                });
+
+                if (!response.ok) {
+                    throw new Error('Login failed');
+                }
+
+                const data = await response.json();
+                localStorage.setItem('authToken', data.access_token);
+                authToken = data.access_token;
+
+                document.getElementById('loginModal').close();
+                await checkAuth();
+                await initialize();
+                showToast('Login successful');
+                addActivity('Login', `User ${username} logged in`);
+            } catch (error) {
+                showError('Login failed. Please check your credentials.');
+                console.error('Login error:', error);
+            }
+        }
+
+        // Logout handler
+        function logout() {
+            localStorage.removeItem('authToken');
+            currentUser = null;
+            authToken = null;
+            showLoginModal();
+            showToast('Logged out successfully');
+        }
+
+        // Add authorization headers to all fetch requests
+        const originalFetch = window.fetch;
+        window.fetch = function() {
+            if (authToken) {
+                const args = Array.from(arguments);
+                if (args[1] && args[1].headers) {
+                    args[1].headers = {
+                        ...args[1].headers,
+                        'Authorization': `Bearer ${authToken}`
+                    };
+                } else if (args[1]) {
+                    args[1].headers = {
+                        'Authorization': `Bearer ${authToken}`
+                    };
+                } else {
+                    args.push({
+                        headers: {
+                            'Authorization': `Bearer ${authToken}`
+                        }
+                    });
+                }
+                return originalFetch.apply(window, args);
+            }
+            return originalFetch.apply(window, arguments);
+        };
+
+        // Role-based access control
+        function hasPermission(permission) {
+            if (!currentUser) return false;
+            
+            switch (permission) {
+                case 'manage_users':
+                    return currentUser.role === 'admin';
+                case 'view_users':
+                    return true;
+                case 'manage_ports':
+                    return currentUser.role === 'admin';
+                case 'view_ports':
+                    return true;
+                case 'view_activity':
+                    return currentUser.role === 'admin';
+                default:
+                    return false;
+            }
+        }
+
+        // Update UI based on permissions
+        function updateUIPermissions() {
+            const isAdmin = currentUser && currentUser.role === 'admin';
+            
+            // Hide user management elements for non-admins
+            const userElements = [
+                document.querySelector('[onclick="showAddUserModal()"]'),
+                document.getElementById('usersTabBtn'),  // Tab button
+                document.getElementById('activityTabBtn'),  // Tab button
+                document.getElementById('addUserModal'),
+                document.querySelector('.tabs [onclick="showTab(\'users\')"]'),
+                document.querySelector('.tabs [onclick="showTab(\'activity\')"]'),
+                document.getElementById('usersTabContent'),  // Tab content div
+                document.getElementById('activityTab')  // Tab content div
+            ];
+            
+            // First hide all user-related elements
+            userElements.forEach(el => {
+                if (el) {
+                    el.style.display = 'none';
+                    // Also add a class to ensure it stays hidden
+                    el.classList.add('hidden');
+                }
+            });
+
+            // Show elements only for admin users
+            if (isAdmin) {
+                userElements.forEach(el => {
+                    if (el) {
+                        el.style.display = '';
+                        el.classList.remove('hidden');
+                    }
+                });
+            }
+            const usedPortsSection = document.getElementById('usedPortsSection');
+
+            if (isAdmin) {
+                usedPortsSection.style.display = 'block';
+            } else {
+                usedPortsSection.style.display = 'none';
+            }
+            // Show port exposure form for all users
+            const portExposureForm = document.getElementById('portExposureForm');
+            if (portExposureForm) {
+                portExposureForm.style.display = '';
+                
+                // Handle username select field
+                const usernameSelect = document.getElementById('exposureUsername');
+                if (usernameSelect) {
+                    if (isAdmin) {
+                        usernameSelect.parentElement.style.display = '';
+                    } else {
+                        usernameSelect.parentElement.style.display = 'none';
+                        usernameSelect.value = currentUser.username;
+                    }
+                }
+            }
+
+            // Update port management permissions
+            const portElements = document.querySelectorAll('.port-action');
+            portElements.forEach(el => {
+                if (isAdmin || el.dataset.owner === currentUser.username) {
+                    el.style.display = '';
+                } else {
+                    el.style.display = 'none';
+                }
+            });
+
+            // Ensure we're on the ports tab for non-admin users
+            if (!isAdmin) {
+                showTab('ports');
+            }
+        }
+
+        // Modified initialize function
+        async function initialize() {
+            if (await checkAuth()) {
+                const isAdmin = currentUser.role === 'admin';
+                
+                // Hide all admin-only content by default
+                const adminContent = [
+                    document.getElementById('usersTabBtn'),
+                    document.getElementById('activityTabBtn'),
+                    document.querySelector('.tabs [onclick="showTab(\'users\')"]'),
+                    document.querySelector('.tabs [onclick="showTab(\'activity\')"]'),
+                    document.getElementById('usersTabContent'),
+                    document.getElementById('activityTab')
+                ];
+                
+                adminContent.forEach(el => {
+                    if (el) {
+                        el.style.display = 'none';
+                        el.classList.add('hidden');
+                    }
+                });
+                
+                // Show admin content only for admin users
+                if (isAdmin) {
+                    adminContent.forEach(el => {
+                        if (el) {
+                            el.style.display = '';
+                            el.classList.remove('hidden');
+                        }
+                    });
+                }
+                
+                // Always start with ports tab
+                showTab('ports');
+                
+                updateUIPermissions();
+                
+                // Only fetch users data if admin
+                if (isAdmin) {
+                    await updateUsers();
+                }
+                
+                await updatePorts();
+                setInterval(updatePorts, 10000);
+            }
+        }
+
+        // Start the app
+        initialize();
+
+        // Utility functions
+        function showToast(message, type = 'success') {
+            Swal.fire({
+                text: message,
+                icon: type,
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 3000
+            });
+        }
+
+        function showError(message) {
+            Swal.fire({
+                title: 'Error',
+                text: message,
+                icon: 'error'
+            });
+        }
+
+        function addActivity(action, details) {
+            const activity = {
+                time: new Date().toISOString(),
+                user: currentUser?.username || 'System',
+                action,
+                details
+            };
+            activityLog.unshift(activity);
+            if (activityLog.length > 100) activityLog.pop();
+            updateActivityLog();
+        }
+
+        // Tab management
+        function showTab(tabName) {
+            // Don't allow showing admin tabs for non-admin users
+            if (!currentUser || currentUser.role !== 'admin') {
+                if (tabName === 'users' || tabName === 'activity') {
+                    tabName = 'ports';
+                }
+            }
+
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('tab-active'));
+            const targetTab = document.querySelector(`[onclick="showTab('${tabName}')"]`);
+            if (targetTab) {
+                targetTab.classList.add('tab-active');
+            }
+            
+            // Hide all tab content
+            document.getElementById('usersTabContent').classList.add('hidden');
+            document.getElementById('portsTab').classList.add('hidden');
+            document.getElementById('activityTab').classList.add('hidden');
+            
+            // Show selected tab content
+            switch(tabName) {
+                case 'users':
+                    if (currentUser && currentUser.role === 'admin') {
+                        document.getElementById('usersTabContent').classList.remove('hidden');
+                    } else {
+                        document.getElementById('portsTab').classList.remove('hidden');
+                    }
+                    break;
+                case 'activity':
+                    if (currentUser && currentUser.role === 'admin') {
+                        document.getElementById('activityTab').classList.remove('hidden');
+                    } else {
+                        document.getElementById('portsTab').classList.remove('hidden');
+                    }
+                    break;
+                default:
+                    document.getElementById('portsTab').classList.remove('hidden');
+            }
+        }
+
+        // User management
+        async function updateUsers() {
+            // Only proceed if user is admin
+            if (!currentUser || currentUser.role !== 'admin') {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/users');
+                const users = await response.json();
+                
+                const usersList = document.getElementById('usersList');
+                if (!usersList) return;  // Exit if element doesn't exist
+                
+                usersList.innerHTML = users.map(user => `
+                    <tr>
+                        <td>
+                            <div class="flex items-center gap-2">
+                                <div class="avatar placeholder">
+                                    <div class="bg-neutral text-neutral-content rounded-full w-8">
+                                        <span>${user.username[0].toUpperCase()}</span>
+                                    </div>
+                                </div>
+                                ${user.username}
+                            </div>
+                        </td>
+                        <td>
+                            <span class="badge ${user.role === 'admin' ? 'badge-primary' : 'badge-secondary'}">
+                                ${user.role}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge ${user.is_active ? 'badge-success' : 'badge-error'}">
+                                ${user.is_active ? 'Active' : 'Inactive'}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="flex gap-2">
+                                <button onclick="viewUser('${user.username}')" class="btn btn-square btn-sm">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                    </svg>
+                                </button>
+                                <button onclick="deleteUser('${user.username}')" class="btn btn-square btn-sm btn-error">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `).join('');
+
+                // Update user select in port exposure form
+                const usernameSelect = document.getElementById('exposureUsername');
+                if (usernameSelect) {
+                    if (currentUser.role === 'admin') {
+                        usernameSelect.innerHTML = '<option value="">Select a user</option>' +
+                            users.map(user => `<option value="${user.username}">${user.username}</option>`).join('');
+                    } else {
+                        usernameSelect.innerHTML = `<option value="${currentUser.username}">${currentUser.username}</option>`;
+                        usernameSelect.disabled = true;
+                    }
+                }
+            } catch (error) {
+                console.error('Error fetching users:', error);
+            }
+        }
+
+        async function viewUser(username) {
+            try {
+                // Get users data from the global users list
+                const response = await fetch('/api/users');
+                const users = await response.json();
+                const user = users.find(u => u.username === username);
+                
+                if (!user) {
+                    throw new Error('User not found');
+                }
+                
+                const userDetails = document.getElementById('userDetails');
+                userDetails.innerHTML = `
+                    <div class="flex flex-col items-center gap-4">
+                        <div class="avatar placeholder">
+                            <div class="bg-neutral text-neutral-content rounded-full w-24">
+                                <span class="text-3xl">${user.username[0].toUpperCase()}</span>
+                            </div>
+                        </div>
+                        <div class="text-center">
+                            <h3 class="text-xl font-bold">${user.full_name}</h3>
+                            <p class="text-base-content/60">${user.email}</p>
+                            <div class="mt-2 flex gap-2 justify-center">
+                                <span class="badge ${user.role === 'admin' ? 'badge-primary' : 'badge-secondary'}">${user.role}</span>
+                                <span class="badge ${user.is_active ? 'badge-success' : 'badge-error'}">${user.is_active ? 'Active' : 'Inactive'}</span>
+                            </div>
+                        </div>
+                        <div class="divider"></div>
+                        <div class="w-full">
+                            <h4 class="font-semibold mb-2">Allowed Ports</h4>
+                            <div class="flex flex-wrap gap-2">
+                                ${user.allowed_ports.length > 0 
+                                    ? user.allowed_ports.map(port => `
+                                        <span class="badge badge-primary">${port}</span>
+                                      `).join('')
+                                    : '<span class="text-base-content/60">No ports assigned</span>'
+                                }
+                            </div>
+                        </div>
+                        <div class="divider"></div>
+                        <div class="w-full">
+                            <h4 class="font-semibold mb-2">Account Details</h4>
+                            <div class="stats stats-vertical shadow w-full">
+                                <div class="stat">
+                                    <div class="stat-title">Created</div>
+                                    <div class="stat-value text-sm">${new Date(user.created_at).toLocaleString()}</div>
+                                </div>
+                                <div class="stat">
+                                    <div class="stat-title">Last Login</div>
+                                    <div class="stat-value text-sm">${user.last_login ? new Date(user.last_login).toLocaleString() : 'Never'}</div>
+                                </div>
+                            </div>
+                        </div>
+                        ${currentUser.role === 'admin' ? `
+                            <div class="divider"></div>
+                            <div class="w-full flex gap-2 justify-end">
+                                <button onclick="editUser('${user.username}')" class="btn btn-primary btn-sm">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                    </svg>
+                                    Edit
+                                </button>
+                                <button onclick="deleteUser('${user.username}')" class="btn btn-error btn-sm">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                    Delete
+                                </button>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+
+                // Add animation
+                anime({
+                    targets: '#userDetails > div',
+                    opacity: [0, 1],
+                    translateY: [20, 0],
+                    duration: 500,
+                    easing: 'easeOutQuad'
+                });
+            } catch (error) {
+                showError('Error fetching user details');
+                console.error('Error fetching user details:', error);
+            }
+        }
+
+        async function deleteUser(username) {
+            const result = await Swal.fire({
+                title: 'Are you sure?',
+                text: `Delete user ${username}?`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Yes, delete it!'
+            });
+
+            if (result.isConfirmed) {
+                try {
+                    const response = await fetch(`/api/users/${username}`, {
+                        method: 'DELETE'
+                    });
+                    
+                    if (response.ok) {
+                        showToast(`User ${username} deleted successfully`);
+                        addActivity('Delete User', `Deleted user ${username}`);
+                        await updateUsers();
+                    } else {
+                        throw new Error('Failed to delete user');
+                    }
+                } catch (error) {
+                    showError('Error deleting user');
+                    console.error('Error deleting user:', error);
+                }
+            }
+        }
+
+        // Port management
+        async function updatePorts() {
+            try {
+                const response = await fetch('/api/ports');
+                const data = await response.json();
+                
+                const usedPortsEl = document.getElementById('usedPorts');
+                const availablePortsEl = document.getElementById('availablePorts');
+                const exposedPortsEl = document.getElementById('exposedPortsList');
+                
+                usedPortsEl.innerHTML = data.used_ports
+                    .map(port => `<span class="badge badge-error">${port}</span>`)
+                    .join('');
+                
+                availablePortsEl.innerHTML = data.available_ports
+                    .slice(0, 20)
+                    .map(port => `<span class="badge badge-success">${port}</span>`)
+                    .join('');
+                
+                if (data.available_ports.length > 20) {
+                    availablePortsEl.innerHTML += `<span class="badge badge-info">+${data.available_ports.length - 20} more</span>`;
+                }
+
+                exposedPortsEl.innerHTML = Object.entries(data.exposed_ports)
+                    .map(([key, port]) => `
+                        <tr>
+                            <td>${port.local_port}</td>
+                            <td>${port.remote_port}</td>
+                            <td>${port.username}</td>
+                            <td>${port.description}</td>
+                            <td>
+                                <div class="flex items-center gap-2">
+                                    <code class="bg-base-300 p-2 rounded text-sm flex-1 overflow-x-auto">${port.client_command}</code>
+                                    <button onclick="copyCommand('${port.client_command}')" 
+                                            class="btn btn-square btn-sm" title="Copy Command">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                                        </svg>
+                                    </button>
+                                    <button onclick="copyQuickInstall('${port.username}', '${port.local_port}', '${port.remote_port}')"
+                                            class="btn btn-square btn-sm btn-primary" title="Copy Quick Install Command">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </td>
+                            <td>
+                                <button onclick="unexposePort(${port.local_port}, ${port.remote_port})" 
+                                        class="btn btn-error btn-sm">Remove</button>
+                            </td>
+                        </tr>
+                    `)
+                    .join('');
+            } catch (error) {
+                showError('Error fetching ports');
+                console.error('Error fetching ports:', error);
+            }
+        }
+
+        // Activity log
+        function updateActivityLog() {
+            const activityLogEl = document.getElementById('activityLog');
+            activityLogEl.innerHTML = activityLog.map(activity => `
+                <tr>
+                    <td>${new Date(activity.time).toLocaleString()}</td>
+                    <td>${activity.user}</td>
+                    <td>${activity.action}</td>
+                    <td>${activity.details}</td>
+                </tr>
+            `).join('');
+        }
+
+        // Event handlers
+        document.getElementById('portExposureForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = {
+                local_port: parseInt(document.getElementById('localPort').value),
+                remote_port: parseInt(document.getElementById('remotePort').value),
+                username: document.getElementById('exposureUsername').value,
+                description: document.getElementById('description').value
+            };
+
+            try {
+                const response = await fetch('/api/ports/expose', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                if (response.ok) {
+                    document.getElementById('portExposureForm').reset();
+                    showToast('Port exposed successfully');
+                    addActivity('Expose Port', `Exposed port ${formData.local_port}:${formData.remote_port}`);
+                    await updatePorts();
+                } else {
+                    throw new Error('Failed to expose port');
+                }
+            } catch (error) {
+                showError('Error exposing port');
+                console.error('Error exposing port:', error);
+            }
+        });
+
+        // Copy command
+        function copyCommand(command) {
+            navigator.clipboard.writeText(command).then(() => {
+                showToast('Command copied to clipboard');
+            });
+        }
+
+        // Port filtering
+        function filterExposedPorts() {
+            const searchInput = document.getElementById('portSearchInput');
+            const filter = searchInput.value.toLowerCase();
+            const tbody = document.getElementById('exposedPortsList');
+            const rows = tbody.getElementsByTagName('tr');
+
+            for (let row of rows) {
+                const localPort = row.cells[0].textContent;
+                const remotePort = row.cells[1].textContent;
+                const username = row.cells[2].textContent;
+                const description = row.cells[3].textContent;
+                
+                const matchesFilter = 
+                    localPort.toLowerCase().includes(filter) ||
+                    remotePort.toLowerCase().includes(filter) ||
+                    username.toLowerCase().includes(filter) ||
+                    description.toLowerCase().includes(filter);
+                
+                // Use anime.js for smooth transitions
+                anime({
+                    targets: row,
+                    opacity: matchesFilter ? 1 : 0,
+                    height: matchesFilter ? row.scrollHeight : 0,
+                    duration: 300,
+                    easing: 'easeInOutQuad',
+                    complete: function() {
+                        row.style.display = matchesFilter ? '' : 'none';
+                    }
+                });
+            }
+        }
+
+        async function copyQuickInstall(username, localPort, remotePort) {
+            try {
+                // Get the server's public URL
+                const serverUrl = window.location.hostname;
+                const serverPort = window.location.port;
+                
+                // Find the port data to get the password from the client command
+                const response = await fetch('/api/ports');
+                const data = await response.json();
+                const portKey = `${localPort}:${remotePort}`;
+                const portData = Object.values(data.exposed_ports).find(
+                    port => port.username === username && 
+                    port.local_port === parseInt(localPort) && 
+                    port.remote_port === parseInt(remotePort)
+                );
+                
+                if (!portData) {
+                    throw new Error('Port data not found');
+                }
+                
+                // Extract password from client command
+                const authMatch = portData.client_command.match(/--auth\s+([^:]+):([^\s]+)/);
+                if (!authMatch) {
+                    throw new Error('Could not extract authentication details');
+                }
+                const password = authMatch[2];
+                
+                // Create the quick install URL with password and token
+                const quickInstallUrl = `${window.location.protocol}//${serverUrl}:${serverPort}/api/install-client/${username}:${password}:${localPort}:${remotePort}?token=${authToken}`;
+                const quickInstallCommand = `curl -sSL "${quickInstallUrl}" | bash`;
+                
+                // Function to handle copying text
+                const copyToClipboard = async (text) => {
+                    try {
+                        // Try using the clipboard API first
+                        if (navigator.clipboard && window.isSecureContext) {
+                            await navigator.clipboard.writeText(text);
+                            return true;
+                        }
+                        
+                        // Fallback: Create a temporary textarea element
+                        const textArea = document.createElement('textarea');
+                        textArea.value = text;
+                        
+                        // Make the textarea out of viewport
+                        textArea.style.position = 'fixed';
+                        textArea.style.left = '-999999px';
+                        textArea.style.top = '-999999px';
+                        document.body.appendChild(textArea);
+                        
+                        // Select and copy the text
+                        textArea.focus();
+                        textArea.select();
+                        
+                        try {
+                            document.execCommand('copy');
+                            textArea.remove();
+                            return true;
+                        } catch (e) {
+                            textArea.remove();
+                            return false;
+                        }
+                    } catch (err) {
+                        return false;
+                    }
+                };
+                
+                // Try to copy the command
+                const copied = await copyToClipboard(quickInstallCommand);
+                
+                if (copied) {
+                    showToast('Quick install command copied to clipboard');
+                } else {
+                    // If copying failed, show the command in a way that users can manually copy it
+                    showToast('Unable to copy automatically. Please copy the command manually.', 'warning');
+                }
+                
+                // Show installation instructions with copy button
+                Swal.fire({
+                    title: 'Quick Installation',
+                    html: `
+                        <div class="text-left">
+                            <p class="mb-4">Run this command on the client machine to install:</p>
+                            <div class="relative">
+                                <pre class="bg-base-300 p-4 rounded"><code id="quickInstallCode">${quickInstallCommand}</code></pre>
+                                <button onclick="copyTextFromElement('quickInstallCode')" 
+                                        class="btn btn-sm btn-primary absolute top-2 right-2">
+                                    Copy
+                                </button>
+                            </div>
+                            <p class="mt-4">This will:</p>
+                            <ul class="list-disc list-inside">
+                                <li>Download and install Chisel</li>
+                                <li>Configure the service</li>
+                                <li>Start the tunnel automatically</li>
+                            </ul>
+                        </div>
+                    `,
+                    icon: 'info',
+                    confirmButtonText: 'Close'
+                });
+            } catch (error) {
+                showError('Error generating quick install command');
+                console.error('Error:', error);
+            }
+        }
+
+        // Helper function to copy text from an element
+        function copyTextFromElement(elementId) {
+            const element = document.getElementById(elementId);
+            const text = element.textContent;
+            
+            const copyToClipboard = async (text) => {
+                try {
+                    if (navigator.clipboard && window.isSecureContext) {
+                        await navigator.clipboard.writeText(text);
+                        return true;
+                    }
+                    
+                    const textArea = document.createElement('textarea');
+                    textArea.value = text;
+                    textArea.style.position = 'fixed';
+                    textArea.style.left = '-999999px';
+                    textArea.style.top = '-999999px';
+                    document.body.appendChild(textArea);
+                    textArea.focus();
+                    textArea.select();
+                    
+                    try {
+                        document.execCommand('copy');
+                        textArea.remove();
+                        return true;
+                    } catch (e) {
+                        textArea.remove();
+                        return false;
+                    }
+                } catch (err) {
+                    return false;
+                }
+            };
+            
+            copyToClipboard(text).then(success => {
+                if (success) {
+                    showToast('Command copied to clipboard');
+                } else {
+                    showToast('Unable to copy. Please select and copy manually.', 'warning');
+                }
+            });
+        }
+
+        // Add these functions to the script section
+        function showUserProfile() {
+            const modal = document.getElementById('profileModal');
+            
+            // Update profile information
+            document.getElementById('profileInitials').textContent = currentUser.username[0].toUpperCase();
+            document.getElementById('profileFullName').textContent = currentUser.full_name;
+            document.getElementById('profileEmail').textContent = currentUser.email;
+            document.getElementById('profileRole').textContent = currentUser.role;
+            
+            // Clear password fields
+            document.getElementById('ChangecurrentPassword').value = '';
+            document.getElementById('ChangenewPassword').value = '';
+            document.getElementById('ChangeconfirmPassword').value = '';
+            
+            modal.showModal();
+        }
+
+        function closeProfileModal() {
+            document.getElementById('profileModal').close();
+        }
+
+        async function changePassword() {
+            
+            const currentPassword = document.getElementById('ChangecurrentPassword').value;
+            alert(currentPassword);
+            const newPassword = document.getElementById('ChangenewPassword').value;
+            alert(newPassword);
+            const confirmPassword = document.getElementById('ChangeconfirmPassword').value;
+            alert(confirmPassword);
+            console.log("currentPassword:",currentPassword, "newPassword:",newPassword, "confirmPassword:",confirmPassword);
+            
+            // Validate passwords
+            if (!currentPassword || !newPassword || !confirmPassword) {
+                showError('All password fields are required');
+                return;
+            }
+            
+            if (newPassword !== confirmPassword) {
+                showError('New passwords do not match');
+                return;
+            }
+            
+            if (newPassword.length < 8) {
+                showError('New password must be at least 8 characters long');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/users/${currentUser.username}/password`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({
+                        old_password: currentPassword,
+                        new_password: newPassword,
+                        confirm_password: confirmPassword
+                    })
+                });
+                // const response = await fetch(`/api/users/${currentUser.username}/password`, {
+                //     method: 'PUT',
+                //     headers: {
+                //         'Content-Type': 'application/json',
+                //         'Authorization': `Bearer ${authToken}`
+                //     },
+                //     body: JSON.stringify({
+                //         old_password: currentPassword,
+                //         new_password: newPassword
+                //     })
+                // });
+                
+                if (response.ok) {
+                    showToast('Password changed successfully');
+                    addActivity('Change Password', `Changed password for user ${currentUser.username}`);
+                    closeProfileModal();
+                    
+                    // Show info about existing connections
+                    Swal.fire({
+                        title: 'Password Changed',
+                        text: 'Your password has been changed successfully. Existing tunnel connections will continue to work with the old password, but new connections will require the new password.',
+                        icon: 'success',
+                        confirmButtonText: 'OK'
+                    });
+                } else {
+                    const data = await response.json();
+                    throw new Error(data.detail || 'Failed to change password');
+                }
+            } catch (error) {
+                showError(error.message);
+                console.error('Error changing password:', error);
+            }
+        }
+
+        // Add this function for editing user details
+        async function editUser(username) {
+            try {
+                const response = await fetch('/api/users');
+                const users = await response.json();
+                const user = users.find(u => u.username === username);
+                
+                if (!user) {
+                    throw new Error('User not found');
+                }
+
+                const result = await Swal.fire({
+                    title: 'Edit User',
+                    html: `
+                        <div class="space-y-4 text-left">
+                            <div class="form-control">
+                                <label class="label">
+                                    <span class="label-text">Full Name</span>
+                                </label>
+                                <input type="text" id="editFullName" class="input input-bordered bg-base-200 text-base-content" value="${user.full_name}">
+                            </div>
+                            <div class="form-control">
+                                <label class="label">
+                                    <span class="label-text">Email</span>
+                                </label>
+                                <input type="email" id="editEmail" class="input input-bordered bg-base-200 text-base-content" value="${user.email}">
+                            </div>
+                            <div class="form-control">
+                                <label class="label">
+                                    <span class="label-text">Role</span>
+                                </label>
+                                <select id="editRole" class="select select-bordered bg-base-200 text-base-content">
+                                    <option value="user" ${user.role === 'user' ? 'selected' : ''}>User</option>
+                                    <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>
+                                </select>
+                            </div>
+                            <div class="form-control">
+                                <label class="label">
+                                    <span class="label-text">Status</span>
+                                </label>
+                                <select id="editStatus" class="select select-bordered bg-base-200 text-base-content">
+                                    <option value="true" ${user.is_active ? 'selected' : ''}>Active</option>
+                                    <option value="false" ${!user.is_active ? 'selected' : ''}>Inactive</option>
+                                </select>
+                            </div>
+                            <div class="form-control">
+                                <label class="label">
+                                    <span class="label-text">Allowed Ports</span>
+                                    <span class="label-text-alt">
+                                        <div class="tooltip tooltip-left" data-tip="Click for help with port patterns">
+                                            <button onclick="showPortPatternsHelp()" class="btn btn-circle btn-xs">?</button>
+                                        </div>
+                                    </span>
+                                </label>
+                                <input type="text" id="editPorts" class="input input-bordered bg-base-200 text-base-content" value="${user.allowed_ports.join(',')}">
+                                <label class="label">
+                                    <span class="label-text-alt text-info">Comma-separated list of port patterns. Examples: 3000, ^0.0.0.0:8080$, ^R:0.0.0.0:7000$</span>
+                                </label>
+                            </div>
+                            <div class="divider">Change Password (Optional)</div>
+                            <div class="form-control">
+                                <label class="label">
+                                    <span class="label-text">New Password</span>
+                                </label>
+                                <input type="password" id="editNewPassword" class="input input-bordered bg-base-200 text-base-content" placeholder="Leave blank to keep current password">
+                            </div>
+                            <div class="form-control">
+                                <label class="label">
+                                    <span class="label-text">Confirm New Password</span>
+                                </label>
+                                <input type="password" id="editConfirmPassword" class="input input-bordered bg-base-200 text-base-content" placeholder="Leave blank to keep current password">
+                            </div>
+                            <div class="alert alert-info text-info-content border border-info">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <span>If you change the password, existing tunnel connections will continue to work with the old password.</span>
+                            </div>
+                        </div>
+                    `,
+                    background: 'hsl(var(--b1))',
+                    color: 'hsl(var(--bc))',
+                    showCancelButton: true,
+                    confirmButtonText: 'Save Changes',
+                    cancelButtonText: 'Cancel',
+                    confirmButtonColor: 'hsl(var(--p))',
+                    cancelButtonColor: 'hsl(var(--n))',
+                    focusConfirm: false,
+                    customClass: {
+                        popup: 'bg-base-100 text-base-content',
+                        title: 'text-base-content',
+                        htmlContainer: 'text-base-content',
+                        confirmButton: 'btn btn-primary',
+                        cancelButton: 'btn',
+                        input: 'bg-base-200 text-base-content'
+                    },
+                    preConfirm: () => {
+                        const newPassword = document.getElementById('editNewPassword').value;
+                        const confirmPassword = document.getElementById('editConfirmPassword').value;
+
+                        // Validate passwords if provided
+                        if (newPassword || confirmPassword) {
+                            if (newPassword !== confirmPassword) {
+                                Swal.showValidationMessage('New passwords do not match');
+                                return false;
+                            }
+                            if (newPassword.length < 8) {
+                                Swal.showValidationMessage('New password must be at least 8 characters long');
+                                return false;
+                            }
+                        }
+
+                        return {
+                            username: user.username,
+                            full_name: document.getElementById('editFullName').value,
+                            email: document.getElementById('editEmail').value,
+                            role: document.getElementById('editRole').value,
+                            is_active: document.getElementById('editStatus').value === 'true',
+                            allowed_ports: document.getElementById('editPorts').value
+                                .split(',')
+                                .map(p => p.trim())
+                                .filter(p => p),
+                            new_password: newPassword || undefined
+                        }
+                    }
+                });
+
+                if (result.isConfirmed) {
+                    // First update user details
+                    const updateResponse = await fetch(`/api/users/${username}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${authToken}`
+                        },
+                        body: JSON.stringify(result.value)
+                    });
+
+                    if (!updateResponse.ok) {
+                        const data = await updateResponse.json();
+                        throw new Error(data.detail || 'Failed to update user');
+                    }
+
+                    // If password was provided, update it
+                    if (result.value.new_password) {
+                        const passwordResponse = await fetch(`/api/users/${username}/password`, {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${authToken}`
+                            },
+                            body: JSON.stringify({
+                                old_password: 'admin_override',  // Special flag for admin override
+                                new_password: result.value.new_password
+                            })
+                        });
+
+                        if (!passwordResponse.ok) {
+                            const data = await passwordResponse.json();
+                            throw new Error(data.detail || 'Failed to update password');
+                        }
+                    }
+
+                    showToast('User updated successfully');
+                    addActivity('Update User', `Updated user ${username}${result.value.new_password ? ' (including password)' : ''}`);
+                    await updateUsers();
+                    viewUser(username);  // Refresh the user details view
+                }
+            } catch (error) {
+                showError(error.message);
+                console.error('Error updating user:', error);
+            }
+        }
+
+        // Add this new function to show port patterns help
+        function showPortPatternsHelp() {
+            Swal.fire({
+                title: 'Port Patterns Guide',
+                html: `
+                    <div class="text-left space-y-4">
+                        <div class="alert alert-info text-info-content border border-info">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <div>
+                                <h3 class="font-bold">What are Port Patterns?</h3>
+                                <p>Port patterns define which ports a user can access through the Chisel tunnel. These patterns are configured on the server side to control what connections each user is allowed to establish.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="divider">Types of Port Patterns</div>
+                        
+                        <div class="space-y-4">
+                            <div class="card bg-base-200 shadow-lg">
+                                <div class="card-body">
+                                    <h3 class="card-title text-primary">Direct Tunnels (Server → Client)</h3>
+                                    <div class="space-y-2">
+                                        <p><span class="font-bold">Pattern:</span> <code class="bg-base-300 px-2 py-1 rounded">^0.0.0.0:PORT$</code></p>
+                                        <p><span class="font-bold">Example:</span> <code class="bg-base-300 px-2 py-1 rounded">^0.0.0.0:8080$</code></p>
+                                        <div class="alert alert-info text-info-content border border-info mt-2">
+                                            <div>
+                                                <h4 class="font-bold">What it does:</h4>
+                                                <ul class="list-disc list-inside mt-1">
+                                                    <li>Server-side pattern that allows incoming connections to the specified port</li>
+                                                    <li>Client connects with: <code>chisel client --auth user:pass server_url PORT:localhost:PORT</code></li>
+                                                    <li>Traffic flows: Internet → Server Port → Client Local Port</li>
+                                                    <li>Use case: Access client's local services through server</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="card bg-base-200 shadow-lg">
+                                <div class="card-body">
+                                    <h3 class="card-title text-secondary">Reverse Tunnels (Client → Server)</h3>
+                                    <div class="space-y-2">
+                                        <p><span class="font-bold">Pattern:</span> <code class="bg-base-300 px-2 py-1 rounded">^R:0.0.0.0:PORT$</code></p>
+                                        <p><span class="font-bold">Example:</span> <code class="bg-base-300 px-2 py-1 rounded">^R:0.0.0.0:3000$</code></p>
+                                        <div class="alert alert-info text-info-content border border-info mt-2">
+                                            <div>
+                                                <h4 class="font-bold">What it does:</h4>
+                                                <ul class="list-disc list-inside mt-1">
+                                                    <li>Server-side pattern that allows clients to expose their local ports</li>
+                                                    <li>Client connects with: <code>chisel client --auth user:pass server_url R:SERVER_PORT:localhost:LOCAL_PORT</code></li>
+                                                    <li>Traffic flows: Internet → Server Port → Client Local Port</li>
+                                                    <li>Use case: Expose local development servers, databases, or APIs through the server</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="divider">Connection Flow Examples</div>
+
+                        <div class="overflow-x-auto">
+                            <table class="table table-zebra w-full">
+                                <thead>
+                                    <tr>
+                                        <th>Service</th>
+                                        <th>Server Pattern</th>
+                                        <th>Client Command</th>
+                                        <th>Flow</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Web Server</td>
+                                        <td><code>^R:0.0.0.0:3000$</code></td>
+                                        <td><code>chisel client --auth user:pass server_url R:3000:localhost:3000</code></td>
+                                        <td>Browser → Server:3000 → Client:3000</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Database</td>
+                                        <td><code>^R:0.0.0.0:5432$</code></td>
+                                        <td><code>chisel client --auth user:pass server_url R:5432:localhost:5432</code></td>
+                                        <td>Apps → Server:5432 → Client:5432</td>
+                                    </tr>
+                                    <tr>
+                                        <td>SSH Access</td>
+                                        <td><code>^0.0.0.0:2222$</code></td>
+                                        <td><code>chisel client --auth user:pass server_url 2222:localhost:22</code></td>
+                                        <td>SSH → Server:2222 → Client:22</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="divider">Security Best Practices</div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="card bg-success/20 shadow-lg">
+                                <div class="card-body">
+                                    <h3 class="card-title text-success">Do's</h3>
+                                    <ul class="list-disc list-inside">
+                                        <li>Only grant access to necessary ports</li>
+                                        <li>Use specific port numbers</li>
+                                        <li>Regularly review port access</li>
+                                        <li>Document port assignments</li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <div class="card bg-error/20 shadow-lg">
+                                <div class="card-body">
+                                    <h3 class="card-title text-error">Don'ts</h3>
+                                    <ul class="list-disc list-inside">
+                                        <li>Don't use wildcard port patterns</li>
+                                        <li>Don't share tunnel credentials</li>
+                                        <li>Don't expose sensitive ports</li>
+                                        <li>Don't leave unused ports open</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-warning mt-4">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                            </svg>
+                            <div>
+                                <h3 class="font-bold">Important Notes</h3>
+                                <ul class="list-disc list-inside mt-1">
+                                    <li>Admin users automatically get access to all ports</li>
+                                    <li>Changes to port patterns are applied automatically (server restarts in the background)</li>
+                                    <li>Always use the most restrictive pattern possible</li>
+                                    <li>Test new patterns before deploying to production</li>
+                                    <li>New connections will use updated patterns immediately</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                `,
+                width: '800px',
+                confirmButtonText: 'Got it!',
+                confirmButtonColor: 'hsl(var(--p))',
+                background: 'hsl(var(--b1))',
+                color: 'hsl(var(--bc))'
+            });
+        }
+    </script>
+</body>
+</html> 

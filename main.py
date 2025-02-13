@@ -175,7 +175,7 @@ async def download_chisel():
 
         # Get current directory
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        os.copyfile("/usr/local/bin/chisel", current_dir)
+        shutil.copy("/usr/local/bin/chisel", current_dir)
         chisel_exe = "chisel.exe" if os_name == "windows" else "chisel"
         chisel_path = os.path.join(current_dir, chisel_exe)
 
